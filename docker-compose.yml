@@ -12,6 +12,8 @@ services:
     restart: always
     networks:
       - skillab-network
+    labels:
+      io.portainer.accesscontrol.teams: skillab-all
 
 networks:
   skillab-network:
