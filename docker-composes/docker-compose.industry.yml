@@ -30,6 +30,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://user-management-db:5432/test_db
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=root
+    restart: unless-stopped
     ports:
       - '8086:8080'
 
@@ -40,17 +41,9 @@ services:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: root
       POSTGRES_DB: test_db
+    restart: unless-stopped
     volumes:
        - user_management_postgresql_data:/var/lib/postgresql/data
-
-
-  # -- Skillab analysis --
-  skillab-analysis:
-    image: ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:${DOCKER_TAG}
-    container_name: skillab-analysis
-    ports:
-      - "8873:8872"
-    restart: unless-stopped
   
 
   # -- KU Detection --
@@ -77,18 +70,100 @@ services:
       POSTGRES_PASSWORD: root
       POSTGRES_DB: test
     volumes:
-      - ku_detection_postgresql:/var/lib/postgresql
       - ku_detection_postgresql_data:/var/lib/postgresql/data
-    ports:
-      - '5430:5432'
     restart: unless-stopped
+
+
+  # -- Gap With Competition --
+  #gap-with-competition:
+  #  image: ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:${DOCKER_TAG}
+  #  ports:
+  #    - "8021:8000"
+  #  restart: unless-stopped
+  #db?
+
+
+  # -- Hiring Management --
+  hiring-management-app:
+    build: .
+    image: ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:${DOCKER_TAG}
+    container_name: hiring-management-app
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://hiring-management-db:5432/test_db
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+    depends_on:
+      hiring-management-db:
+        condition: service_healthy
+    ports:
+      - "8890:8080"
   
+  hiring-management-db:
+    image: postgres:16-alpine
+    container_name: hiring-management-db
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: test_db
+    volumes:
+      - hiring_management_postgresql_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d test_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  # -- Employee Management --
+  employee-management-app:
+    build: .
+    image: ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:${DOCKER_TAG}
+    container_name: employee-management-app
+    depends_on:
+      employee-management-db:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://employee-management-db:5432/test_db
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+    ports:
+      - "8888:8080"
   
-  # --  --
+  employee-management-db:
+    image: postgres:16-alpine
+    container_name: employee-management-db
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: test_db
+    volumes:
+      - employee_management_postgresql_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d test_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  # -- Analysis Diversity --
+  analysis-diversity:
+    container_name: analysis-diversity
+    image: ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:${DOCKER_TAG}
+    environment:
+      - URL=https://skillab-tracker.csd.auth.gr/api
+    ports:
+      - "8870:8870"
+    restart: unless-stopped
+
+
+
   # -- to Add more --
+  # curiculum (for general analysis data)? & archetypal & hcv
+  # and forecasters
 
   
 volumes:
   user_management_postgresql_data:
-  ku_detection_postgresql:
   ku_detection_postgresql_data:
+  hiring_management_postgresql_data:
+  employee_management_postgresql_data:
